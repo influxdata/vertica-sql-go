@@ -39,7 +39,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/vertica/vertica-sql-go/msgs"
+	"github.com/influxdata/vertica-sql-go/msgs"
 )
 
 func makeColumnDef() *msgs.BERowDescMsg {
@@ -65,7 +65,7 @@ func mockRow() []byte {
 	return buf.Bytes()
 }
 
-//Simulate loading a bunch of rows from messages and then extracting them with Next()
+// Simulate loading a bunch of rows from messages and then extracting them with Next()
 func BenchmarkRows(b *testing.B) {
 	const rowCount = 10000
 	var msgType msgs.BEDataRowMsg

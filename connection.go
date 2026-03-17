@@ -50,14 +50,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vertica/vertica-sql-go/common"
-	"github.com/vertica/vertica-sql-go/logger"
-	"github.com/vertica/vertica-sql-go/msgs"
+	"github.com/influxdata/vertica-sql-go/common"
+	"github.com/influxdata/vertica-sql-go/logger"
+	"github.com/influxdata/vertica-sql-go/msgs"
 )
 
 var (
-	connectionLogger    = logger.New("connection")
-	asciiTotpRegex      = regexp.MustCompile(`^[0-9]{6}$`) // precompiled: exactly 6 ASCII digits
+	connectionLogger = logger.New("connection")
+	asciiTotpRegex   = regexp.MustCompile(`^[0-9]{6}$`) // precompiled: exactly 6 ASCII digits
 )
 
 const (
@@ -836,7 +836,7 @@ func (v *connection) sync() error {
 }
 
 func (v *connection) LastNotice() string {
-    return v.lastNotice
+	return v.lastNotice
 }
 
 func (v *connection) lockSessionMutex() {

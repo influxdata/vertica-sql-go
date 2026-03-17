@@ -1,4 +1,4 @@
-module github.com/vertica/vertica-sql-go
+module github.com/influxdata/vertica-sql-go
 
 go 1.13
 

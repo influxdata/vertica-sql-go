@@ -35,7 +35,7 @@ package rowcache
 import (
 	"testing"
 
-	"github.com/vertica/vertica-sql-go/msgs"
+	"github.com/influxdata/vertica-sql-go/msgs"
 )
 
 func TestMemoryCache(t *testing.T) {

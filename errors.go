@@ -35,7 +35,7 @@ package vertigo
 import (
 	"fmt"
 
-	"github.com/vertica/vertica-sql-go/msgs"
+	"github.com/influxdata/vertica-sql-go/msgs"
 )
 
 // VError represents an error reported by the Vertica server.

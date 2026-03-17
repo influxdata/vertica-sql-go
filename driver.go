@@ -38,7 +38,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/vertica/vertica-sql-go/logger"
+	"github.com/influxdata/vertica-sql-go/logger"
 )
 
 // Driver as defined by the Go language Driver interface

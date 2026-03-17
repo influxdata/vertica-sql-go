@@ -35,7 +35,7 @@ package msgs
 import (
 	"fmt"
 
-	"github.com/vertica/vertica-sql-go/common"
+	"github.com/influxdata/vertica-sql-go/common"
 )
 
 type customType struct {
@@ -43,7 +43,6 @@ type customType struct {
 	TypeName string
 }
 
-//
 type BEParameterDescMsg struct {
 	ParameterTypes []common.ParameterType
 }

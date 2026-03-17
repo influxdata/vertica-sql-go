@@ -44,15 +44,14 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
-	//"regexp"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-    //"github.com/pquerna/otp/totp"
-    //"github.com/stretchr/testify/assert"
-	"github.com/vertica/vertica-sql-go/logger"
+	//"github.com/pquerna/otp/totp"
+	//"github.com/stretchr/testify/assert"
+	"github.com/influxdata/vertica-sql-go/logger"
 )
 
 var (
