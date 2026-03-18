@@ -37,6 +37,9 @@ func (c *Config) URL() *url.URL {
 	}
 	if c.User != "" || c.Password != "" {
 		u.User = url.UserPassword(c.User, c.Password)
+	} else if c.OAuthAccessToken != "" {
+		// Ensure userinfo is preserved / non-nil in OAuth-only configurations.
+		u.User = url.User(c.User)
 	}
 	v := make(url.Values)
 	if len(c.BackupHosts) > 0 {
