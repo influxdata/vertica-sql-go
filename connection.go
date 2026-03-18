@@ -120,6 +120,7 @@ type connection struct {
 	workload         string
 	totp             string
 	lastNotice       string
+	dialContext      func(context.Context, string, string) (net.Conn, error)
 }
 
 // Begin - Begin starts and returns a new transaction. (DEPRECATED)
@@ -218,79 +219,61 @@ func (v *connection) ResetSession(ctx context.Context) error {
 }
 
 // newConnection constructs a new Vertica Connection object based on the connection string.
-func newConnection(connString string) (*connection, error) {
+func newConnection(ctx context.Context, cfg *Config) (*connection, error) {
 
 	result := &connection{parameters: make(map[string]string), usePreparedStmts: true}
 
 	var err error
-	result.connURL, err = url.Parse(connString)
-
-	if err != nil {
-		return nil, err
-	}
+	result.connURL = cfg.URL()
 
 	result.clientPID = os.Getpid()
-	if client_label := result.connURL.Query().Get("client_label"); client_label != "" {
-		result.sessionID = client_label
+	if cfg.ClientLabel != "" {
+		result.sessionID = cfg.ClientLabel
 	} else {
 		result.sessionID = fmt.Sprintf("%s-%s-%d-%d", driverName, driverVersion, result.clientPID, time.Now().Unix())
 	}
 
 	// Read the interpolate flag.
-	if iFlag := result.connURL.Query().Get("use_prepared_statements"); iFlag != "" {
-		result.usePreparedStmts = iFlag == "1"
-	}
+	result.usePreparedStmts = cfg.UsePreparedStatements
 
 	// Read Autocommit flag.
-	if iFlag := result.connURL.Query().Get("autocommit"); iFlag == "" || iFlag == "1" {
+	if cfg.AutoCommit {
 		result.autocommit = "on"
 	} else {
 		result.autocommit = "off"
 	}
 
 	// Read OAuth access token flag.
-	result.oauthaccesstoken = result.connURL.Query().Get("oauth_access_token")
+	result.oauthaccesstoken = cfg.OAuthAccessToken
 
-	// Read TOTP (MFA) value. If provided, validate now so we fail fast before handshake.
-	if t := result.connURL.Query().Get("totp"); t != "" {
-		if err := validateTOTP(t); err != nil {
-			return nil, err
-		}
-		result.totp = t
-	}
+	// Read TOTP (MFA) value.
+	result.totp = cfg.TOTP
 
-	// Read connection load balance flag.
-	loadBalanceFlag := result.connURL.Query().Get("connection_load_balance")
-
-	// Read connection failover flag.
-	backupHostsStr := result.connURL.Query().Get("backup_server_node")
-	if backupHostsStr == "" {
-		result.connHostsList = []string{result.connURL.Host}
-	} else {
-		// Parse comma-separated list of backup host-port pairs
-		hosts := strings.Split(backupHostsStr, ",")
-		// Push target host to front of the hosts list
-		result.connHostsList = append([]string{result.connURL.Host}, hosts...)
-	}
+	// Create the host list by putting the main host first followed by
+	// any backup hosts.
+	result.connHostsList = append([]string{result.connURL.Host}, cfg.BackupHosts...)
 
 	// Read SSL/TLS flag.
-	sslFlag := strings.ToLower(result.connURL.Query().Get("tlsmode"))
+	sslFlag := cfg.TLSMode
 	if sslFlag == "" {
 		sslFlag = tlsModeNone
 	}
 
 	// Read Workload flag
-	result.workload = result.connURL.Query().Get("workload")
+	result.workload = cfg.Workload
 
-	result.conn, err = result.establishSocketConnection()
+	// Set the dial function
+	result.dialContext = cfg.dial
+
+	result.conn, err = result.establishSocketConnection(ctx)
 
 	if err != nil {
 		return nil, err
 	}
 
 	// Load Balancing
-	if loadBalanceFlag == "1" {
-		if err = result.balanceLoad(); err != nil {
+	if cfg.LoadBalance {
+		if err = result.balanceLoad(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -312,7 +295,7 @@ func newConnection(connString string) (*connection, error) {
 	return result, nil
 }
 
-func (v *connection) establishSocketConnection() (net.Conn, error) {
+func (v *connection) establishSocketConnection(ctx context.Context) (net.Conn, error) {
 	// Failover: loop to try all hosts in the list
 	err_msg := ""
 	for i := 0; i < len(v.connHostsList); i++ {
@@ -332,7 +315,7 @@ func (v *connection) establishSocketConnection() (net.Conn, error) {
 		for _, j := range r.Perm(len(ips)) {
 			// j comes from random permutation of indexes - ips[j] will access a random resolved ip
 			addrString := net.JoinHostPort(ips[j].String(), port) // IPv6 returns "[host]:port"
-			conn, err := net.Dial("tcp", addrString)
+			conn, err := v.dialContext(ctx, "tcp", addrString)
 			if err != nil {
 				err_msg += fmt.Sprintf("\n  '%s': %s", v.connHostsList[i], err.Error())
 			} else {
@@ -598,7 +581,7 @@ func (v *connection) readAll(buf []byte) error {
 	}
 }
 
-func (v *connection) balanceLoad() error {
+func (v *connection) balanceLoad(ctx context.Context) error {
 	v.sendMessage(&msgs.FELoadBalanceMsg{})
 	response := v.scratch[:1]
 
@@ -659,7 +642,7 @@ func (v *connection) balanceLoad() error {
 
 	// Connect to new host
 	v.conn.Close()
-	v.conn, err = v.establishSocketConnection()
+	v.conn, err = v.establishSocketConnection(ctx)
 
 	if err != nil {
 		return fmt.Errorf("cannot redirect to %s (%s)", loadBalanceAddr, err.Error())

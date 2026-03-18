@@ -268,7 +268,7 @@ func (s *stmt) QueryContextRaw(ctx context.Context, baseArgs []driver.NamedValue
 		case <-ctx.Done():
 			stmtLogger.Info("Context cancelled, cancelling %s", s.preparedName)
 			cancelMsg := msgs.FECancelMsg{PID: pid, Key: key}
-			conn, err := s.conn.establishSocketConnection()
+			conn, err := s.conn.establishSocketConnection(context.Background())
 			if err != nil {
 				stmtLogger.Warn("unable to establish connection for cancellation")
 				return

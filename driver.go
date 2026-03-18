@@ -33,6 +33,7 @@ package vertigo
 // THE SOFTWARE.
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"os"
@@ -55,9 +56,17 @@ var driverLogger = logger.New("driver")
 // Open takes a connection string in this format:
 // user:pass@host:port/database
 func (d *Driver) Open(connString string) (driver.Conn, error) {
-	conn, err := newConnection(connString)
+	cfg, err := ParseDSN(connString)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := newConnection(context.Background(), cfg)
 	// Do not log here; let caller/application decide how to surface connection errors.
 	return conn, err
+}
+
+func (d *Driver) OpenConnector(connString string) (driver.Connector, error) {
+	return ParseDSN(connString)
 }
 
 // Register ourselves with the sql package.
